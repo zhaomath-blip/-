@@ -1,6 +1,7 @@
-// 底部导航栏：今日 / 日程 / 打卡 / 建议 / 我的
+// 底部导航栏：首页 / 今日 / 日程 / 打卡 / 建议 / 我的
 // 管理员额外多一个「管理」入口
 const BASE_TABS = [
+  { key: 'home', label: '首页', icon: '🏠' },
   { key: 'today', label: '今日', icon: '📅' },
   { key: 'schedule', label: '日程', icon: '🗓️' },
   { key: 'checkin', label: '打卡', icon: '📍' },
@@ -9,9 +10,10 @@ const BASE_TABS = [
 ]
 
 export default function BottomNav({ active, onChange, isAdmin }) {
-  // 管理员：把「建议」替换为「管理」，保持 5 个不拥挤
+  // 管理员：把「建议」替换为「管理」，保持 6 个不拥挤
   const tabs = isAdmin
     ? [
+        { key: 'home', label: '首页', icon: '🏠' },
         { key: 'today', label: '今日', icon: '📅' },
         { key: 'schedule', label: '日程', icon: '🗓️' },
         { key: 'checkin', label: '打卡', icon: '📍' },

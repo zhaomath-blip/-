@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import BottomNav from './components/BottomNav'
+import Home from './pages/Home'
 import Today from './pages/Today'
 import Schedule from './pages/Schedule'
 import Checkin from './pages/Checkin'
@@ -9,6 +10,7 @@ import Mine from './pages/Mine'
 import { useAuth } from './hooks/useAuth'
 
 const PAGES = {
+  home: Home,
   today: Today,
   schedule: Schedule,
   checkin: Checkin,
@@ -18,12 +20,12 @@ const PAGES = {
 }
 
 export default function App() {
-  const [tab, setTab] = useState('today')
+  const [tab, setTab] = useState('home')
   const { isAdmin } = useAuth()
 
-  // 管理员访问 admin 页；非管理员访问 admin 时回退到 today
-  const safeTab = tab === 'admin' && !isAdmin ? 'today' : tab
-  const CurrentPage = PAGES[safeTab] || Today
+  // 管理员访问 admin 页；非管理员访问 admin 时回退到 home
+  const safeTab = tab === 'admin' && !isAdmin ? 'home' : tab
+  const CurrentPage = PAGES[safeTab] || Home
 
   return (
     // 外层：桌面端居中显示，模拟手机屏幕
@@ -39,7 +41,7 @@ export default function App() {
         {/* 内容区：可滚动。key 变化时重新挂载，触发页面切换动画 */}
         <main className="flex-1 overflow-y-auto">
           <div key={safeTab} className="animate-jelly-in">
-            <CurrentPage />
+            <CurrentPage onNavigate={setTab} />
           </div>
         </main>
 

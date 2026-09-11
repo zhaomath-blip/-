@@ -125,11 +125,11 @@ export default function Schedule() {
           <div
             key={v.id}
             className="bg-white rounded-2xl p-4 shadow-sm space-y-3 jelly-card animate-jelly-in"
-            style={{ animationDelay: `${index * 70}ms` }}
+            style={{ animationDelay: `${Math.min(index, 6) * 40}ms` }}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-xl animate-jelly-wobble">🚌</span>
+                <span className="text-xl">🚌</span>
                 <h2 className="font-semibold text-gray-800">
                   {v.plate_number || '未填写车牌'}
                 </h2>
@@ -166,11 +166,11 @@ export default function Schedule() {
           <div
             key={d.id}
             className="bg-white rounded-2xl p-4 shadow-sm space-y-3 jelly-card animate-jelly-in"
-            style={{ animationDelay: `${index * 70}ms` }}
+            style={{ animationDelay: `${Math.min(index, 6) * 40}ms` }}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 text-sm font-medium animate-jelly-wobble">
+                <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 text-sm font-medium">
                   {(d.name || '?').slice(0, 1)}
                 </div>
                 <h2 className="font-semibold text-gray-800">

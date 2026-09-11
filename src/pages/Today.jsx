@@ -199,12 +199,12 @@ export default function Today() {
             type="button"
             onClick={() => setActiveTaskId(row.id)}
             className="w-full text-left bg-white rounded-2xl p-4 shadow-sm space-y-2 jelly-card animate-jelly-in"
-            style={{ animationDelay: `${index * 70}ms` }}
+            style={{ animationDelay: `${Math.min(index, 6) * 40}ms` }}
           >
             <div className="flex items-start gap-3">
               {/* 状态图标 */}
               <div
-                className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg animate-jelly-wobble ${getStatusStyle(
+                className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg ${getStatusStyle(
                   row.status,
                 )}`}
               >

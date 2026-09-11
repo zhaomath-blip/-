@@ -367,7 +367,7 @@ export default function Admin() {
                 <div
                   key={row.id}
                   className="bg-white rounded-2xl p-4 shadow-sm space-y-2 jelly-card animate-jelly-in"
-                  style={{ animationDelay: `${index * 60}ms` }}
+                  style={{ animationDelay: `${Math.min(index, 6) * 40}ms` }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="font-semibold text-gray-800 leading-snug">
@@ -452,7 +452,7 @@ export default function Admin() {
               <div
                 key={row.id}
                 className="bg-white rounded-2xl p-4 shadow-sm space-y-1 jelly-card animate-jelly-in"
-                style={{ animationDelay: `${index * 60}ms` }}
+                style={{ animationDelay: `${Math.min(index, 6) * 40}ms` }}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-800">

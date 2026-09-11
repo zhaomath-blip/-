@@ -158,7 +158,7 @@ export default function TaskDetail({ taskId, onBack }) {
             <p className="text-sm font-medium text-gray-700">时间信息</p>
 
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600 animate-jelly-wobble">
+              <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600">
                 📤
               </div>
               <div className="flex-1">
@@ -170,7 +170,7 @@ export default function TaskDetail({ taskId, onBack }) {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center text-red-500 animate-jelly-wobble">
+              <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center text-red-500">
                 ⏰
               </div>
               <div className="flex-1">

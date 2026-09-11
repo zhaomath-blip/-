@@ -33,8 +33,9 @@ export default function BottomNav({ active, onChange, isAdmin }) {
             }`}
           >
             <span
-              className={`text-lg leading-none transition-transform ${
-                isActive ? 'animate-jelly-wobble' : ''
+              key={isActive ? 'on' : 'off'}
+              className={`text-lg leading-none ${
+                isActive ? 'animate-jelly-pop' : ''
               }`}
             >
               {tab.icon}

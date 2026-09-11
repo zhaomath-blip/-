@@ -29,23 +29,19 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ===== 果冻动画（Jelly Animations）===== */
+/* ===== 果冻动画（Jelly Animations）=====
+   优化版：幅度更小、过渡更顺滑、GPU 加速
+   缓动统一使用 easeOutCubic，避免过冲带来的顿挫感 */
 
-/* 果冻弹入：从缩小 + 轻微旋转，带弹性回弹 */
+/* 果冻弹入：轻微缩小 + 极短位移，柔和淡入 */
 @keyframes jelly-in {
   0% {
     opacity: 0;
-    transform: scale(0.85, 0.85) translateY(12px);
+    transform: scale(0.94, 0.94) translateY(6px);
   }
-  55% {
+  60% {
     opacity: 1;
-    transform: scale(1.06, 0.94) translateY(-2px);
-  }
-  70% {
-    transform: scale(0.96, 1.04) translateY(0);
-  }
-  85% {
-    transform: scale(1.02, 0.98);
+    transform: scale(1.015, 0.99) translateY(-1px);
   }
   100% {
     opacity: 1;
@@ -53,65 +49,59 @@ body {
   }
 }
 
-/* 果冻按压：点击时像果冻一样被压扁再弹回 */
+/* 果冻按压：点击时轻微压扁再回弹 */
 @keyframes jelly-press {
   0% {
     transform: scale(1, 1);
   }
-  30% {
-    transform: scale(0.92, 0.88);
+  40% {
+    transform: scale(0.97, 0.95);
   }
-  55% {
-    transform: scale(1.05, 1.06);
-  }
-  75% {
-    transform: scale(0.98, 0.97);
+  70% {
+    transform: scale(1.015, 1.02);
   }
   100% {
     transform: scale(1, 1);
   }
 }
 
-/* 果冻摇摆：图标持续轻微晃动，像果冻抖动 */
+/* 果冻摇摆：图标持续轻微晃动，幅度很小、周期更长更柔和 */
 @keyframes jelly-wobble {
   0%,
   100% {
     transform: scale(1, 1) rotate(0deg);
   }
   25% {
-    transform: scale(1.08, 0.92) rotate(-6deg);
+    transform: scale(1.03, 0.98) rotate(-2.5deg);
   }
   50% {
-    transform: scale(0.94, 1.06) rotate(4deg);
+    transform: scale(0.985, 1.02) rotate(1.8deg);
   }
   75% {
-    transform: scale(1.04, 0.96) rotate(-2deg);
+    transform: scale(1.015, 0.99) rotate(-0.8deg);
   }
 }
 
-/* 果冻漂浮：上下轻微浮动 */
+/* 果冻漂浮：上下极轻微浮动 */
 @keyframes jelly-float {
   0%,
   100% {
     transform: translateY(0) scale(1, 1);
   }
   50% {
-    transform: translateY(-4px) scale(1.02, 0.98);
+    transform: translateY(-2px) scale(1.008, 0.994);
   }
 }
 
 /* 果冻脉冲：用于统计数字，轻微放大回弹 */
 @keyframes jelly-pop {
   0% {
-    transform: scale(0.6);
+    transform: scale(0.82);
     opacity: 0;
   }
   60% {
-    transform: scale(1.15);
+    transform: scale(1.04);
     opacity: 1;
-  }
-  80% {
-    transform: scale(0.95);
   }
   100% {
     transform: scale(1);
@@ -119,42 +109,53 @@ body {
   }
 }
 
-/* 工具类 */
+/* 工具类：统一 GPU 加速，减少重绘抖动 */
+.animate-jelly-in,
+.animate-jelly-press,
+.animate-jelly-wobble,
+.animate-jelly-float,
+.animate-jelly-pop {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
 .animate-jelly-in {
-  animation: jelly-in 0.55s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  animation: jelly-in 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
 
 .animate-jelly-press {
-  animation: jelly-press 0.45s cubic-bezier(0.22, 1.2, 0.36, 1);
+  animation: jelly-press 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .animate-jelly-wobble {
-  animation: jelly-wobble 2.4s ease-in-out infinite;
+  animation: jelly-wobble 3.6s ease-in-out infinite;
 }
 
 .animate-jelly-float {
-  animation: jelly-float 2.8s ease-in-out infinite;
+  animation: jelly-float 4s ease-in-out infinite;
 }
 
 .animate-jelly-pop {
-  animation: jelly-pop 0.5s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  animation: jelly-pop 0.36s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
 
-/* 卡片悬停/按压时的果冻反馈 */
+/* 卡片悬停/按压时的果冻反馈：过渡更短更顺滑 */
 .jelly-card {
-  transition: transform 0.18s cubic-bezier(0.22, 1.2, 0.36, 1),
-    box-shadow 0.18s ease;
+  transition: transform 0.16s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 0.16s ease;
   will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .jelly-card:active {
-  transform: scale(0.95, 0.93);
+  transform: scale(0.975, 0.965);
 }
 
 @media (hover: hover) {
   .jelly-card:hover {
-    transform: translateY(-3px) scale(1.015);
-    box-shadow: 0 10px 24px -8px rgba(27, 132, 245, 0.35);
+    transform: translateY(-2px) scale(1.008);
+    box-shadow: 0 8px 20px -10px rgba(27, 132, 245, 0.3);
   }
 }
 

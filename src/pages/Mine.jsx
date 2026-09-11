@@ -245,7 +245,7 @@ export default function Mine() {
       {user ? (
         <>
           <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3 animate-jelly-in">
-            <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-medium animate-jelly-wobble">
+            <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-medium">
               {getDisplayName(user).slice(0, 1)}
             </div>
             <div className="min-w-0 flex-1">

@@ -289,7 +289,7 @@ export default function Checkin() {
             <div
               key={row.id}
               className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between jelly-card animate-jelly-in"
-              style={{ animationDelay: `${index * 60}ms` }}
+              style={{ animationDelay: `${Math.min(index, 6) * 40}ms` }}
             >
               <div>
                 <p className="text-sm font-medium text-gray-800">

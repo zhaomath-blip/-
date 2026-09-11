@@ -1,0 +1,172 @@
+@import "tailwindcss";
+
+/* 主题色：干净清爽的蓝绿色系 */
+@theme {
+  --color-brand-50: #eff9ff;
+  --color-brand-100: #daf1ff;
+  --color-brand-200: #bde7ff;
+  --color-brand-300: #8fd8ff;
+  --color-brand-400: #59c0ff;
+  --color-brand-500: #33a3ff;
+  --color-brand-600: #1b84f5;
+  --color-brand-700: #146ce1;
+  --color-brand-800: #1757b6;
+  --color-brand-900: #194b8f;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei",
+    sans-serif;
+  background-color: #f5f7fa;
+  color: #1f2937;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== 果冻动画（Jelly Animations）===== */
+
+/* 果冻弹入：从缩小 + 轻微旋转，带弹性回弹 */
+@keyframes jelly-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.85, 0.85) translateY(12px);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.06, 0.94) translateY(-2px);
+  }
+  70% {
+    transform: scale(0.96, 1.04) translateY(0);
+  }
+  85% {
+    transform: scale(1.02, 0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1, 1) translateY(0);
+  }
+}
+
+/* 果冻按压：点击时像果冻一样被压扁再弹回 */
+@keyframes jelly-press {
+  0% {
+    transform: scale(1, 1);
+  }
+  30% {
+    transform: scale(0.92, 0.88);
+  }
+  55% {
+    transform: scale(1.05, 1.06);
+  }
+  75% {
+    transform: scale(0.98, 0.97);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+/* 果冻摇摆：图标持续轻微晃动，像果冻抖动 */
+@keyframes jelly-wobble {
+  0%,
+  100% {
+    transform: scale(1, 1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.08, 0.92) rotate(-6deg);
+  }
+  50% {
+    transform: scale(0.94, 1.06) rotate(4deg);
+  }
+  75% {
+    transform: scale(1.04, 0.96) rotate(-2deg);
+  }
+}
+
+/* 果冻漂浮：上下轻微浮动 */
+@keyframes jelly-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.02, 0.98);
+  }
+}
+
+/* 果冻脉冲：用于统计数字，轻微放大回弹 */
+@keyframes jelly-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 工具类 */
+.animate-jelly-in {
+  animation: jelly-in 0.55s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+.animate-jelly-press {
+  animation: jelly-press 0.45s cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+
+.animate-jelly-wobble {
+  animation: jelly-wobble 2.4s ease-in-out infinite;
+}
+
+.animate-jelly-float {
+  animation: jelly-float 2.8s ease-in-out infinite;
+}
+
+.animate-jelly-pop {
+  animation: jelly-pop 0.5s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+/* 卡片悬停/按压时的果冻反馈 */
+.jelly-card {
+  transition: transform 0.18s cubic-bezier(0.22, 1.2, 0.36, 1),
+    box-shadow 0.18s ease;
+  will-change: transform;
+}
+
+.jelly-card:active {
+  transform: scale(0.95, 0.93);
+}
+
+@media (hover: hover) {
+  .jelly-card:hover {
+    transform: translateY(-3px) scale(1.015);
+    box-shadow: 0 10px 24px -8px rgba(27, 132, 245, 0.35);
+  }
+}
+
+/* 尊重用户的减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-jelly-in,
+  .animate-jelly-press,
+  .animate-jelly-wobble,
+  .animate-jelly-float,
+  .animate-jelly-pop,
+  .jelly-card {
+    animation: none !important;
+    transition: none !important;
+  }
+}

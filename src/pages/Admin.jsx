@@ -47,7 +47,7 @@ function toDateStr(value) {
 export default function Admin() {
   const { user, isAdmin, loading: authLoading } = useAuth()
 
-  // 顶部 Tab：publish 发布任务 / checkin 打卡记录
+  // 顶部 Tab：publish 发布任务 / checkin 打卡记录 / progress 完成情况
   const [tab, setTab] = useState('publish')
 
   // ---------- 发布任务表单 ----------
@@ -65,29 +65,35 @@ export default function Admin() {
   const [schedules, setSchedules] = useState([])
   const [drivers, setDrivers] = useState([])
   const [checkins, setCheckins] = useState([])
+  const [profiles, setProfiles] = useState([])
   const [listLoading, setListLoading] = useState(true)
 
-  // 加载：任务列表、司机列表、打卡记录
+  // 完成情况：展开的司机 id
+  const [expandedUserId, setExpandedUserId] = useState(null)
+
+  // 加载：任务列表、司机列表、打卡记录、用户资料
   async function loadData() {
     setListLoading(true)
     try {
-      const [schedRes, driverRes, checkinRes] = await Promise.all([
+      const [schedRes, driverRes, checkinRes, profileRes] = await Promise.all([
         supabase
           .from('schedules')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(50),
+          .limit(200),
         supabase.from('drivers').select('*').order('created_at', { ascending: false }),
         supabase
           .from('checkins')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(50),
+        supabase.from('profiles').select('*'),
       ])
 
       setSchedules(schedRes.data || [])
       setDrivers(driverRes.data || [])
       setCheckins(checkinRes.data || [])
+      setProfiles(profileRes.data || [])
     } catch {
       // 忽略单表错误
     } finally {
@@ -204,6 +210,36 @@ export default function Admin() {
     )
   }
 
+  // ---------- 完成情况：按司机聚合任务 ----------
+  // 以 profiles 里所有用户为基准，统计各自被指派的任务
+  const progressList = profiles
+    .map((p) => {
+      const mine = schedules.filter((s) => s.assignee_id === p.id)
+      const done = mine.filter((s) => s.status === '已完成').length
+      const doing = mine.filter((s) => s.status === '进行中').length
+      const pending = mine.filter((s) => s.status === '待处理').length
+      const canceled = mine.filter((s) => s.status === '已取消').length
+      const total = mine.length
+      const rate = total ? Math.round((done / total) * 100) : 0
+      return {
+        id: p.id,
+        name: p.full_name || p.phone || '未命名用户',
+        role: p.role || 'driver',
+        total,
+        done,
+        doing,
+        pending,
+        canceled,
+        rate,
+        tasks: mine,
+      }
+    })
+    // 有任务的排前面，其次按完成率降序
+    .sort((a, b) => b.total - a.total || b.rate - a.rate)
+
+  // 未指派给任何人的任务
+  const unassigned = schedules.filter((s) => !s.assignee_id)
+
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -236,6 +272,17 @@ export default function Admin() {
           }`}
         >
           打卡记录
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('progress')}
+          className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+            tab === 'progress'
+              ? 'bg-white text-brand-600 shadow-sm'
+              : 'text-gray-500'
+          }`}
+        >
+          完成情况
         </button>
       </div>
 
@@ -475,6 +522,160 @@ export default function Admin() {
                 </p>
               </div>
             ))}
+        </div>
+      )}
+
+      {/* ============ 完成情况 ============ */}
+      {tab === 'progress' && (
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-gray-700 px-1">
+            司机完成情况（{progressList.filter((p) => p.total > 0).length} 人有任务）
+          </p>
+
+          {listLoading && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <p className="text-sm text-gray-400">加载中...</p>
+            </div>
+          )}
+
+          {!listLoading && progressList.length === 0 && (
+            <div className="bg-white rounded-2xl p-8 shadow-sm text-center animate-jelly-in">
+              <p className="text-3xl mb-2 animate-jelly-float">👥</p>
+              <p className="text-sm text-gray-400">暂无用户数据</p>
+            </div>
+          )}
+
+          {!listLoading &&
+            progressList.map((p, index) => {
+              const expanded = expandedUserId === p.id
+              return (
+                <div
+                  key={p.id}
+                  className="bg-white rounded-2xl shadow-sm overflow-hidden jelly-card animate-jelly-in"
+                  style={{ animationDelay: `${Math.min(index, 6) * 40}ms` }}
+                >
+                  {/* 司机概要行（可点击展开） */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedUserId(expanded ? null : p.id)
+                    }
+                    className="w-full text-left p-4 space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="shrink-0 w-9 h-9 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center text-sm font-semibold">
+                          {p.name.slice(0, 1)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">
+                            {p.name}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {p.role === 'admin' ? '管理员' : '司机'} · 共{' '}
+                            {p.total} 个任务
+                          </p>
+                        </div>
+                      </div>
+                      <span
+                        className={`shrink-0 text-xs px-2 py-0.5 rounded-full ${
+                          p.rate >= 80
+                            ? 'bg-green-50 text-green-600'
+                            : p.rate >= 50
+                              ? 'bg-amber-50 text-amber-600'
+                              : 'bg-gray-100 text-gray-400'
+                        }`}
+                      >
+                        {p.rate}%
+                      </span>
+                    </div>
+
+                    {/* 完成率进度条 */}
+                    <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-brand-500 transition-all"
+                        style={{ width: `${p.rate}%` }}
+                      />
+                    </div>
+
+                    {/* 各状态数量 */}
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                      <span>✅ 已完成 {p.done}</span>
+                      <span>🚀 进行中 {p.doing}</span>
+                      <span>🕐 待处理 {p.pending}</span>
+                      {p.canceled > 0 && <span>⛔ 已取消 {p.canceled}</span>}
+                      <span className="ml-auto text-brand-500">
+                        {expanded ? '收起 ▲' : '明细 ▼'}
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 展开：任务明细 */}
+                  {expanded && (
+                    <div className="px-4 pb-4 space-y-2 border-t border-gray-50 pt-3">
+                      {p.tasks.length === 0 && (
+                        <p className="text-xs text-gray-400">暂无任务</p>
+                      )}
+                      {p.tasks.map((t) => (
+                        <div
+                          key={t.id}
+                          className="flex items-start justify-between gap-2 bg-gray-50 rounded-xl px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-gray-700 truncate">
+                              {t.title || '未命名任务'}
+                            </p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                              {toDateStr(t.due_date) || '未设置'}{' '}
+                              {formatTime(t.due_time)}
+                            </p>
+                          </div>
+                          <span
+                            className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full ${getStatusStyle(
+                              t.status,
+                            )}`}
+                          >
+                            {t.status || '待处理'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+          {/* 未指派任务 */}
+          {!listLoading && unassigned.length > 0 && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm space-y-2 animate-jelly-in">
+              <p className="text-sm font-medium text-gray-700">
+                未指派任务（{unassigned.length}）
+              </p>
+              {unassigned.map((t) => (
+                <div
+                  key={t.id}
+                  className="flex items-start justify-between gap-2 bg-gray-50 rounded-xl px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-gray-700 truncate">
+                      {t.title || '未命名任务'}
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      {toDateStr(t.due_date) || '未设置'}{' '}
+                      {formatTime(t.due_time)}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full ${getStatusStyle(
+                      t.status,
+                    )}`}
+                  >
+                    {t.status || '待处理'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

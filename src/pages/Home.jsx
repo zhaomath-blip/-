@@ -76,7 +76,7 @@ const CALENDAR_COLORS = {
  * props: onNavigate(key) —— 切换到指定底部 Tab
  */
 export default function Home({ onNavigate }) {
-  const { user, isAdmin } = useAuth()
+  const { user, profile, isAdmin } = useAuth()
 
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -176,7 +176,7 @@ export default function Home({ onNavigate }) {
           {today} · {getWeekdayLabel(today)}
         </p>
         <h1 className="text-lg font-bold mt-1">
-          你好，{getDisplayName(user) || '师傅'} 👋
+          你好，{getDisplayName(user, profile) || '师傅'} 👋
         </h1>
         <p className="text-xs opacity-80 mt-1">
           今日共 {todayItems.length} 个任务，加油！

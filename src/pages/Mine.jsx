@@ -26,8 +26,10 @@ function isValidPhone(phone) {
   return /^1\d{10}$/.test(String(phone).trim())
 }
 
-// 取显示名：优先 user_metadata.name，否则手机号/邮箱前缀
-function getDisplayName(user) {
+// 取显示名：优先 profiles.full_name（个性化昵称），
+// 其次 user_metadata.name，最后手机号/邮箱前缀
+function getDisplayName(user, profile) {
+  if (profile?.full_name) return profile.full_name
   if (!user) return ''
   const meta = user.user_metadata || {}
   if (meta.name) return meta.name
@@ -42,7 +44,7 @@ function getDisplayName(user) {
 }
 
 export default function Mine() {
-  const { profile, isAdmin } = useAuth()
+  const { profile, isAdmin, refreshProfile } = useAuth()
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -57,6 +59,16 @@ export default function Mine() {
   const [message, setMessage] = useState('')
   const [isError, setIsError] = useState(false)
 
+  // 注册时的昵称（可选）
+  const [regName, setRegName] = useState('')
+
+  // 昵称编辑
+  const [editingName, setEditingName] = useState(false)
+  const [nameInput, setNameInput] = useState('')
+  const [savingName, setSavingName] = useState(false)
+  const [nameMsg, setNameMsg] = useState('')
+  const [nameIsError, setNameIsError] = useState(false)
+
   // 切换登录/注册，清空表单和提示
   function switchMode(next) {
     setMode(next)
@@ -64,6 +76,68 @@ export default function Mine() {
     setIsError(false)
     setPassword('')
     setConfirmPassword('')
+    setRegName('')
+  }
+
+  // 开始编辑昵称
+  function startEditName() {
+    setNameInput(getDisplayName(user, profile))
+    setNameMsg('')
+    setNameIsError(false)
+    setEditingName(true)
+  }
+
+  // 取消编辑昵称
+  function cancelEditName() {
+    setEditingName(false)
+    setNameMsg('')
+    setNameIsError(false)
+  }
+
+  // 保存昵称：同时写入 profiles.full_name 和 auth 的 user_metadata.name
+  async function handleSaveName() {
+    const next = nameInput.trim()
+    setNameMsg('')
+    setNameIsError(false)
+
+    if (!next) {
+      setNameIsError(true)
+      setNameMsg('昵称不能为空')
+      return
+    }
+    if (next.length > 20) {
+      setNameIsError(true)
+      setNameMsg('昵称最多 20 个字')
+      return
+    }
+
+    setSavingName(true)
+    try {
+      // 1) 更新 auth 用户元数据（用于兜底显示）
+      const { data: authData, error: authError } =
+        await supabase.auth.updateUser({ data: { name: next } })
+      if (authError) throw authError
+      if (authData?.user) setUser(authData.user)
+
+      // 2) 更新 profiles 表（管理员在「完成情况」里看到的就是这个）
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ full_name: next })
+        .eq('id', user.id)
+      if (profileError) throw profileError
+
+      // 3) 刷新全局 profile，让其它页面同步显示新昵称
+      await refreshProfile()
+
+      setNameMsg('昵称已更新')
+      setNameIsError(false)
+      setEditingName(false)
+    } catch (err) {
+      setNameIsError(true)
+      setNameMsg(`保存失败：${err?.message || '请稍后重试'}`)
+    } finally {
+      setSavingName(false)
+    }
   }
 
   // 初始化：读取当前会话，并监听登录状态变化
@@ -167,15 +241,25 @@ export default function Mine() {
 
     setSubmitting(true)
     try {
+      // 昵称：填了就用昵称，没填就用手机号
+      const nickname = regName.trim() || phone
       const { data, error } = await supabase.auth.signUp({
         email: phoneToEmail(phone),
         password,
         options: {
-          data: { name: phone },
+          data: { name: nickname },
         },
       })
 
       if (error) throw error
+
+      // 同步写入 profiles.full_name（若触发器已建好 profile 行）
+      if (data.user?.id) {
+        await supabase
+          .from('profiles')
+          .update({ full_name: nickname })
+          .eq('id', data.user.id)
+      }
 
       // 如果项目开启了「邮箱确认」，signUp 后不会直接返回 session
       if (data.session) {
@@ -185,12 +269,14 @@ export default function Mine() {
         setPhone('')
         setPassword('')
         setConfirmPassword('')
+        setRegName('')
       } else {
         setMessage('注册成功，请直接登录')
         setIsError(false)
         setMode('login')
         setPassword('')
         setConfirmPassword('')
+        setRegName('')
       }
     } catch (err) {
       setIsError(true)
@@ -244,29 +330,82 @@ export default function Mine() {
       {/* 已登录：显示用户信息 */}
       {user ? (
         <>
-          <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3 animate-jelly-in">
-            <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-medium">
-              {getDisplayName(user).slice(0, 1)}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <p className="font-medium text-gray-800 truncate">
-                  {getDisplayName(user)}
-                </p>
-                <span
-                  className={`shrink-0 text-xs px-2 py-0.5 rounded-full ${
-                    isAdmin
-                      ? 'bg-brand-50 text-brand-600'
-                      : 'bg-gray-100 text-gray-500'
-                  }`}
-                >
-                  {isAdmin ? '管理员' : '司机'}
-                </span>
+          <div className="bg-white rounded-2xl p-4 shadow-sm animate-jelly-in space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-medium">
+                {getDisplayName(user, profile).slice(0, 1)}
               </div>
-              <p className="text-xs text-gray-400 truncate">
-                {emailToPhone(user.email)}
-              </p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-gray-800 truncate">
+                    {getDisplayName(user, profile)}
+                  </p>
+                  <span
+                    className={`shrink-0 text-xs px-2 py-0.5 rounded-full ${
+                      isAdmin
+                        ? 'bg-brand-50 text-brand-600'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    {isAdmin ? '管理员' : '司机'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 truncate">
+                  {emailToPhone(user.email)}
+                </p>
+              </div>
+              {!editingName && (
+                <button
+                  type="button"
+                  onClick={startEditName}
+                  className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-brand-50 text-brand-600 font-medium jelly-card"
+                >
+                  修改昵称
+                </button>
+              )}
             </div>
+
+            {/* 昵称编辑区 */}
+            {editingName && (
+              <div className="space-y-2 pt-1 border-t border-gray-50">
+                <label className="text-xs text-gray-400">昵称（最多 20 字）</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    maxLength={20}
+                    placeholder="给自己起个名字"
+                    className="flex-1 px-3 py-2 rounded-xl bg-gray-50 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-brand-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveName}
+                    disabled={savingName}
+                    className="shrink-0 px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium disabled:opacity-50 jelly-card"
+                  >
+                    {savingName ? '保存中...' : '保存'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelEditName}
+                    disabled={savingName}
+                    className="shrink-0 px-3 py-2 rounded-xl bg-gray-100 text-gray-500 text-sm font-medium disabled:opacity-50"
+                  >
+                    取消
+                  </button>
+                </div>
+                {nameMsg && (
+                  <p
+                    className={`text-xs ${
+                      nameIsError ? 'text-red-500' : 'text-green-600'
+                    }`}
+                  >
+                    {nameMsg}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div
@@ -345,6 +484,22 @@ export default function Mine() {
               className="w-full px-3 py-2 rounded-xl bg-gray-50 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-brand-200"
             />
           </div>
+
+          {mode === 'register' && (
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">
+                昵称（选填，不填默认用手机号）
+              </label>
+              <input
+                type="text"
+                value={regName}
+                onChange={(e) => setRegName(e.target.value)}
+                placeholder="给自己起个名字"
+                maxLength={20}
+                className="w-full px-3 py-2 rounded-xl bg-gray-50 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-brand-200"
+              />
+            </div>
+          )}
 
           <div className="space-y-1">
             <label className="text-xs text-gray-400">密码</label>

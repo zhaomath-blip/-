@@ -32,7 +32,7 @@ export default function App() {
         {/* 顶部标题栏 */}
         <header className="shrink-0 bg-white px-4 py-3 border-b border-gray-100">
           <h1 className="text-base font-semibold text-gray-800 text-center">
-            新北方旅游客运管理平台
+            星北方旅游客运管理平台
           </h1>
         </header>
 

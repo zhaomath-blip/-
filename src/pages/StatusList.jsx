@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import TaskDetail from './TaskDetail'
-import StatusList from './StatusList'
 
 // 状态 -> 颜色样式映射
 const STATUS_STYLES = {
@@ -19,12 +18,51 @@ const STATUS_ICONS = {
   已取消: '⛔',
 }
 
+// 状态 -> 主题色（用于顶部标题区）
+const STATUS_THEME = {
+  待处理: {
+    text: 'text-amber-500',
+    bg: 'bg-amber-50',
+    ring: 'ring-amber-100',
+    desc: '等待开始的任务',
+  },
+  进行中: {
+    text: 'text-brand-600',
+    bg: 'bg-brand-50',
+    ring: 'ring-brand-100',
+    desc: '正在执行的任务',
+  },
+  已完成: {
+    text: 'text-green-600',
+    bg: 'bg-green-50',
+    ring: 'ring-green-100',
+    desc: '已经完成的任务',
+  },
+  已取消: {
+    text: 'text-gray-400',
+    bg: 'bg-gray-100',
+    ring: 'ring-gray-100',
+    desc: '已取消的任务',
+  },
+}
+
 function getStatusStyle(status) {
   return STATUS_STYLES[status] || 'bg-gray-100 text-gray-500'
 }
 
 function getStatusIcon(status) {
   return STATUS_ICONS[status] || '📌'
+}
+
+function getStatusTheme(status) {
+  return (
+    STATUS_THEME[status] || {
+      text: 'text-gray-500',
+      bg: 'bg-gray-100',
+      ring: 'ring-gray-100',
+      desc: '任务列表',
+    }
+  )
 }
 
 // 取本地日期字符串，格式 YYYY-MM-DD
@@ -62,21 +100,20 @@ function toDateStr(value) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-// 中文星期
-function getWeekdayLabel() {
-  const names = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
-  return names[new Date().getDay()]
-}
-
-export default function Today() {
+/**
+ * 状态列表二级页面
+ * @param {string} status   要筛选的状态（待处理 / 进行中 / 已完成 / 已取消）
+ * @param {function} onBack 返回上一页
+ */
+export default function StatusList({ status, onBack }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeTaskId, setActiveTaskId] = useState(null)
-  const [activeStatus, setActiveStatus] = useState(null)
 
   const today = getTodayStr()
   const tomorrow = getTomorrowStr()
+  const theme = getStatusTheme(status)
 
   useEffect(() => {
     let cancelled = false
@@ -108,80 +145,41 @@ export default function Today() {
     }
   }, [today, tomorrow])
 
-  // 进入二级页面：状态列表
-  if (activeStatus) {
-    return (
-      <StatusList status={activeStatus} onBack={() => setActiveStatus(null)} />
-    )
-  }
-
-  // 进入二级页面：任务详情
+  // 进入任务详情三级页面
   if (activeTaskId) {
     return (
       <TaskDetail taskId={activeTaskId} onBack={() => setActiveTaskId(null)} />
     )
   }
 
-  // 统计各状态数量
-  const counts = items.reduce((acc, row) => {
-    const s = row.status || '待处理'
-    acc[s] = (acc[s] || 0) + 1
-    return acc
-  }, {})
+  // 按状态筛选
+  const filtered = items.filter((row) => (row.status || '待处理') === status)
 
   return (
     <div className="p-4 space-y-4">
-      {/* 顶部标题 + 日期 */}
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-800">今日任务</h1>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {today} · {getWeekdayLabel()}
-          </p>
+      {/* 顶部返回栏 */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="shrink-0 w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-500 jelly-card"
+          aria-label="返回"
+        >
+          ‹
+        </button>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg font-bold text-gray-800 flex items-center gap-1.5">
+            <span>{getStatusIcon(status)}</span>
+            <span>{status}</span>
+          </h1>
+          <p className="text-xs text-gray-400 mt-0.5">{theme.desc}</p>
         </div>
-        <span className="text-xs px-2.5 py-1 rounded-full bg-brand-50 text-brand-600 font-medium">
-          共 {items.length} 条
+        <span
+          className={`shrink-0 text-xs px-2.5 py-1 rounded-full font-medium ${theme.bg} ${theme.text}`}
+        >
+          共 {filtered.length} 条
         </span>
       </div>
-
-      {/* 状态统计小卡片 */}
-      {!loading && !error && items.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveStatus('待处理')}
-            className="bg-white rounded-2xl p-3 shadow-sm text-center jelly-card animate-jelly-in"
-            style={{ animationDelay: '0ms' }}
-          >
-            <p className="text-lg font-bold text-amber-500 animate-jelly-pop">
-              {counts['待处理'] || 0}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">待处理 ›</p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveStatus('进行中')}
-            className="bg-white rounded-2xl p-3 shadow-sm text-center jelly-card animate-jelly-in"
-            style={{ animationDelay: '80ms' }}
-          >
-            <p className="text-lg font-bold text-brand-600 animate-jelly-pop">
-              {counts['进行中'] || 0}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">进行中 ›</p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveStatus('已完成')}
-            className="bg-white rounded-2xl p-3 shadow-sm text-center jelly-card animate-jelly-in"
-            style={{ animationDelay: '160ms' }}
-          >
-            <p className="text-lg font-bold text-green-600 animate-jelly-pop">
-              {counts['已完成'] || 0}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">已完成 ›</p>
-          </button>
-        </div>
-      )}
 
       {/* 加载中 */}
       {loading && (
@@ -197,18 +195,18 @@ export default function Today() {
         </div>
       )}
 
-      {/* 暂无数据 */}
-      {!loading && !error && items.length === 0 && (
+      {/* 该状态下暂无任务 */}
+      {!loading && !error && filtered.length === 0 && (
         <div className="bg-white rounded-2xl p-8 shadow-sm text-center animate-jelly-in">
-          <p className="text-3xl mb-2 animate-jelly-float">📭</p>
-          <p className="text-sm text-gray-400">今日暂无任务</p>
+          <p className="text-3xl mb-2 animate-jelly-float">{getStatusIcon(status)}</p>
+          <p className="text-sm text-gray-400">暂无「{status}」的任务</p>
         </div>
       )}
 
-      {/* 卡片列表（可点击进入详情） */}
+      {/* 任务卡片列表（可点击进入详情） */}
       {!loading &&
         !error &&
-        items.map((row, index) => (
+        filtered.map((row, index) => (
           <button
             key={row.id}
             type="button"

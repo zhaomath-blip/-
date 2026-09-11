@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useAuth, getDisplayName } from '../hooks/useAuth'
+import Avatar from '../components/Avatar'
 
 // 状态选项
 const STATUS_OPTIONS = ['待处理', '进行中', '已完成', '已取消']
@@ -224,6 +225,7 @@ export default function Admin() {
       return {
         id: p.id,
         name: p.full_name || p.phone || '未命名用户',
+        avatar: p.avatar_url || '',
         role: p.role || 'driver',
         total,
         done,
@@ -564,9 +566,12 @@ export default function Admin() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="shrink-0 w-9 h-9 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center text-sm font-semibold">
-                          {p.name.slice(0, 1)}
-                        </span>
+                        <Avatar
+                          avatar={p.avatar}
+                          name={p.name}
+                          size="w-9 h-9"
+                          textSize="text-sm"
+                        />
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-gray-800 truncate">
                             {p.name}

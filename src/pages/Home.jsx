@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useAuth, getDisplayName } from '../hooks/useAuth'
 import Calendar from '../components/Calendar'
+import Avatar from '../components/Avatar'
 import TaskDetail from './TaskDetail'
 
 // 状态 -> 颜色样式映射
@@ -172,13 +173,24 @@ export default function Home({ onNavigate }) {
     <div className="p-4 space-y-4">
       {/* 欢迎区 */}
       <div className="bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl p-4 text-white shadow-sm animate-jelly-in">
-        <p className="text-xs opacity-80">
-          {today} · {getWeekdayLabel(today)}
-        </p>
-        <h1 className="text-lg font-bold mt-1">
-          你好，{getDisplayName(user, profile) || '师傅'} 👋
-        </h1>
-        <p className="text-xs opacity-80 mt-1">
+        <div className="flex items-center gap-3">
+          <Avatar
+            avatar={profile?.avatar_url}
+            name={getDisplayName(user, profile)}
+            size="w-12 h-12"
+            textSize="text-xl"
+            className="ring-2 ring-white/40"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs opacity-80">
+              {today} · {getWeekdayLabel(today)}
+            </p>
+            <h1 className="text-lg font-bold mt-1 truncate">
+              你好，{getDisplayName(user, profile) || '师傅'} 👋
+            </h1>
+          </div>
+        </div>
+        <p className="text-xs opacity-80 mt-2">
           今日共 {todayItems.length} 个任务，加油！
         </p>
       </div>

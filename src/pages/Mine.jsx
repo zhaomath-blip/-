@@ -1,6 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../hooks/useAuth'
+import Avatar from '../components/Avatar'
+
+// 预设头像（emoji），用户可一键选择
+const PRESET_AVATARS = [
+  '🚌', '🚐', '🚗', '🚕', '🚙', '🛻',
+  '🧑‍✈️', '👨‍✈️', '👩‍✈️', '🧑‍🔧', '😎', '🐯',
+  '🌟', '🔥', '🍀', '⚡', '🎯', '🏆',
+]
 
 // 手机号登录用的占位域名
 // 原理：Supabase 的 signInWithPassword 只认邮箱，
@@ -68,6 +76,13 @@ export default function Mine() {
   const [savingName, setSavingName] = useState(false)
   const [nameMsg, setNameMsg] = useState('')
   const [nameIsError, setNameIsError] = useState(false)
+
+  // 头像编辑
+  const [editingAvatar, setEditingAvatar] = useState(false)
+  const [savingAvatar, setSavingAvatar] = useState(false)
+  const [avatarMsg, setAvatarMsg] = useState('')
+  const [avatarIsError, setAvatarIsError] = useState(false)
+  const fileInputRef = useRef(null)
 
   // 切换登录/注册，清空表单和提示
   function switchMode(next) {
@@ -137,6 +152,86 @@ export default function Mine() {
       setNameMsg(`保存失败：${err?.message || '请稍后重试'}`)
     } finally {
       setSavingName(false)
+    }
+  }
+
+  // 打开/关闭头像选择器
+  function toggleAvatarPicker() {
+    setAvatarMsg('')
+    setAvatarIsError(false)
+    setEditingAvatar((v) => !v)
+  }
+
+  // 统一保存头像值（emoji 或 URL）到 profiles.avatar_url
+  async function saveAvatar(value) {
+    setAvatarMsg('')
+    setAvatarIsError(false)
+    setSavingAvatar(true)
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: value })
+        .eq('id', user.id)
+      if (error) throw error
+
+      await refreshProfile()
+      setAvatarMsg('头像已更新')
+      setAvatarIsError(false)
+      setEditingAvatar(false)
+    } catch (err) {
+      setAvatarIsError(true)
+      setAvatarMsg(`保存失败：${err?.message || '请稍后重试'}`)
+    } finally {
+      setSavingAvatar(false)
+    }
+  }
+
+  // 选择预设 emoji 头像
+  function handlePickPreset(emoji) {
+    saveAvatar(emoji)
+  }
+
+  // 上传自定义图片头像
+  async function handleUploadAvatar(e) {
+    const file = e.target.files?.[0]
+    // 清空 input，保证同一张图能再次选择
+    e.target.value = ''
+    if (!file) return
+
+    setAvatarMsg('')
+    setAvatarIsError(false)
+
+    if (!file.type.startsWith('image/')) {
+      setAvatarIsError(true)
+      setAvatarMsg('请选择图片文件')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarIsError(true)
+      setAvatarMsg('图片不能超过 2MB')
+      return
+    }
+
+    setSavingAvatar(true)
+    try {
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase()
+      // 路径规则：{用户id}/{时间戳}.{扩展名} —— 与存储策略匹配
+      const path = `${user.id}/${Date.now()}.${ext}`
+
+      const { error: upErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, contentType: file.type })
+      if (upErr) throw upErr
+
+      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path)
+      const url = pub?.publicUrl
+      if (!url) throw new Error('获取图片地址失败')
+
+      await saveAvatar(url)
+    } catch (err) {
+      setAvatarIsError(true)
+      setAvatarMsg(`上传失败：${err?.message || '请稍后重试'}`)
+      setSavingAvatar(false)
     }
   }
 
@@ -332,9 +427,20 @@ export default function Mine() {
         <>
           <div className="bg-white rounded-2xl p-4 shadow-sm animate-jelly-in space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-medium">
-                {getDisplayName(user, profile).slice(0, 1)}
-              </div>
+              <button
+                type="button"
+                onClick={toggleAvatarPicker}
+                className="relative jelly-card"
+                title="点击更换头像"
+              >
+                <Avatar
+                  avatar={profile?.avatar_url}
+                  name={getDisplayName(user, profile)}
+                />
+                <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-brand-600 text-white text-[10px] flex items-center justify-center shadow">
+                  ✎
+                </span>
+              </button>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-gray-800 truncate">
@@ -402,6 +508,89 @@ export default function Mine() {
                     }`}
                   >
                     {nameMsg}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* 头像选择区 */}
+            {editingAvatar && (
+              <div className="space-y-3 pt-1 border-t border-gray-50">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-gray-400">
+                    选择头像（点击即保存）
+                  </label>
+                  <button
+                    type="button"
+                    onClick={toggleAvatarPicker}
+                    className="text-xs text-gray-400"
+                  >
+                    收起
+                  </button>
+                </div>
+
+                {/* 预设 emoji 网格 */}
+                <div className="grid grid-cols-6 gap-2">
+                  {PRESET_AVATARS.map((emoji) => {
+                    const active = profile?.avatar_url === emoji
+                    return (
+                      <button
+                        key={emoji}
+                        type="button"
+                        disabled={savingAvatar}
+                        onClick={() => handlePickPreset(emoji)}
+                        className={`aspect-square rounded-xl flex items-center justify-center text-xl transition disabled:opacity-50 ${
+                          active
+                            ? 'bg-brand-100 ring-2 ring-brand-400'
+                            : 'bg-gray-50 hover:bg-gray-100'
+                        }`}
+                      >
+                        {emoji}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* 上传自定义图片 */}
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadAvatar}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    disabled={savingAvatar}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 py-2 rounded-xl bg-brand-50 text-brand-600 text-sm font-medium disabled:opacity-50 jelly-card"
+                  >
+                    {savingAvatar ? '处理中...' : '📷 上传自定义图片'}
+                  </button>
+                  {profile?.avatar_url && (
+                    <button
+                      type="button"
+                      disabled={savingAvatar}
+                      onClick={() => saveAvatar(null)}
+                      className="shrink-0 px-3 py-2 rounded-xl bg-gray-100 text-gray-500 text-sm font-medium disabled:opacity-50"
+                    >
+                      恢复默认
+                    </button>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-gray-400">
+                  支持 jpg / png，大小不超过 2MB
+                </p>
+
+                {avatarMsg && (
+                  <p
+                    className={`text-xs ${
+                      avatarIsError ? 'text-red-500' : 'text-green-600'
+                    }`}
+                  >
+                    {avatarMsg}
                   </p>
                 )}
               </div>
